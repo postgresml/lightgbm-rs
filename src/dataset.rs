@@ -43,6 +43,51 @@ impl Dataset {
         Self { handle }
     }
 
+    /// Create a new `Dataset` from a dense array in row-major order
+    /// without allocating rows in memory.
+    ///
+    /// Example
+    /// ```
+    /// use lightgbm::Dataset;
+    ///
+    /// let data = vec![1.0, 0.1, 0.2, 0.1,
+    ///                0.7, 0.4, 0.5, 0.1,
+    ///                0.9, 0.8, 0.5, 0.1,
+    ///                0.2, 0.2, 0.8, 0.7,
+    ///                0.1, 0.7, 1.0, 0.9];
+    /// let label = vec![0.0, 0.0, 0.0, 1.0, 1.0];
+    /// let dataset = Dataset::from_vec(&data, &label, 4).unwrap();
+    /// ```
+    pub fn from_vec(data: &[f32], labels: &[f32], num_features: i32) -> Result<Self> {
+        let data_length = data.len() as i32;
+        let feature_length = num_features;
+        let params = CString::new("").unwrap();
+        let label_str = CString::new("label").unwrap();
+        let reference = std::ptr::null_mut(); // not use
+        let mut handle = std::ptr::null_mut();
+
+        lgbm_call!(lightgbm_sys::LGBM_DatasetCreateFromMat(
+            data.as_ptr() as *const c_void,
+            lightgbm_sys::C_API_DTYPE_FLOAT32 as i32,
+            data_length,
+            feature_length,
+            1_i32,
+            params.as_ptr() as *const c_char,
+            reference,
+            &mut handle
+        ))?;
+
+        lgbm_call!(lightgbm_sys::LGBM_DatasetSetField(
+            handle,
+            label_str.as_ptr() as *const c_char,
+            labels.as_ptr() as *const c_void,
+            data_length as i32,
+            lightgbm_sys::C_API_DTYPE_FLOAT32 as i32
+        ))?;
+
+        Ok(Self::new(handle))
+    }
+
     /// Create a new `Dataset` from dense array in row-major order.
     ///
     /// Example
@@ -222,6 +267,19 @@ mod tests {
         ];
         let label = vec![0.0, 0.0, 0.0, 1.0, 1.0];
         let dataset = Dataset::from_mat(data, label);
+        assert!(dataset.is_ok());
+    }
+
+    #[test]
+    fn from_vec() {
+        let data = vec![
+            1.0, 0.1, 0.2, 0.1, 0.7, 0.4, 0.5, 0.1, 0.9, 0.8, 0.5, 0.1, 0.2, 0.2, 0.8, 0.7, 0.1,
+            0.7, 1.0, 0.9,
+        ];
+
+        let labels = vec![0.0, 0.0, 0.0, 1.0, 1.0];
+
+        let dataset = Dataset::from_vec(&data, &labels, 4);
         assert!(dataset.is_ok());
     }
 
