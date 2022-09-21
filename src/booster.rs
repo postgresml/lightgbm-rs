@@ -95,21 +95,20 @@ impl Booster {
     ///
     /// Input data example
     /// ```
-    /// let data = vec![vec![1.0, 0.1, 0.2],
-    ///                vec![0.7, 0.4, 0.5],
-    ///                vec![0.1, 0.7, 1.0]];
+    /// let data = vec![1.0, 0.1, 0.2,
+    ///                0.7, 0.4, 0.5,
+    ///                0.1, 0.7, 1.0];
     /// ```
     ///
     /// Output data example
     /// ```
-    /// let output = vec![vec![1.0, 0.109, 0.433]];
+    /// let output = vec![1.0, 0.109, 0.433];
     /// ```
-    pub fn predict(&self, data: Vec<Vec<f64>>) -> Result<Vec<Vec<f64>>> {
+    pub fn predict(&self, data: &[f32], num_features: i32) -> Result<Vec<f32>> {
         let data_length = data.len();
-        let feature_length = data[0].len();
+        let num_rows = data_length / num_features as usize;
         let params = CString::new("").unwrap();
         let mut out_length: c_longlong = 0;
-        let flat_data = data.into_iter().flatten().collect::<Vec<_>>();
 
         // get num_class
         let mut num_class = 0;
@@ -118,33 +117,24 @@ impl Booster {
             &mut num_class
         ))?;
 
-        let out_result: Vec<f64> = vec![Default::default(); data_length * num_class as usize];
+        let out_result: Vec<f32> = vec![Default::default(); num_rows * num_class as usize];
 
         lgbm_call!(lightgbm_sys::LGBM_BoosterPredictForMat(
             self.handle,
-            flat_data.as_ptr() as *const c_void,
-            lightgbm_sys::C_API_DTYPE_FLOAT64 as i32,
-            data_length as i32,
-            feature_length as i32,
+            data.as_ptr() as *const c_void,
+            lightgbm_sys::C_API_DTYPE_FLOAT32 as i32,
+            num_rows as i32,
+            num_features,
             1_i32,
-            0_i32,
+            lightgbm_sys::C_API_PREDICT_NORMAL as i32,
             0_i32,
             -1_i32,
             params.as_ptr() as *const c_char,
             &mut out_length,
-            out_result.as_ptr() as *mut c_double
+            out_result.as_ptr() as *mut c_double,
         ))?;
 
-        // reshape for multiclass [1,2,3,4,5,6] -> [[1,2,3], [4,5,6]]  # 3 class
-        let reshaped_output = if num_class > 1 {
-            out_result
-                .chunks(num_class as usize)
-                .map(|x| x.to_vec())
-                .collect()
-        } else {
-            vec![out_result]
-        };
-        Ok(reshaped_output)
+        Ok(out_result)
     }
 
     /// Get Feature Num.
@@ -257,13 +247,14 @@ mod tests {
             }
         };
         let bst = _train_booster(&params);
-        let feature = vec![vec![0.5; 28], vec![0.0; 28], vec![0.9; 28]];
-        let result = bst.predict(feature).unwrap();
-        let mut normalized_result = Vec::new();
-        for r in &result[0] {
-            normalized_result.push(if r > &0.5 { 1 } else { 0 });
-        }
-        assert_eq!(normalized_result, vec![0, 0, 1]);
+        let mut features = Vec::new();
+        features.extend(vec![0.5; 28]);
+        features.extend(vec![0.0; 28]);
+        features.extend(vec![0.9; 28]);
+
+        assert_eq!(features.len(), 28 * 3);
+        let result = bst.predict(&features, 28).unwrap();
+        assert_eq!(result.len(), 3);
     }
 
     #[test]
