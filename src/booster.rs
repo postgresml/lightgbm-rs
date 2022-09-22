@@ -104,11 +104,13 @@ impl Booster {
     /// ```
     /// let output = vec![1.0, 0.109, 0.433];
     /// ```
-    pub fn predict(&self, data: &[f32], num_features: i32) -> Result<Vec<f32>> {
-        let data_length = data.len();
-        let num_rows = data_length / num_features as usize;
-        let params = CString::new("").unwrap();
-        let mut out_length: c_longlong = 0;
+    pub fn predict(&self, data: &[f32], num_features: i32) -> Result<Vec<f64>> {
+        let ncol = num_features;
+        let nrow = data.len() as i32 / ncol;
+        let is_row_major = 1 as i32;
+        let start_iteration = 0 as i32;
+        let num_iteration = -1 as i32; // no limit
+        let parameters = CString::new("").unwrap();
 
         // get num_class
         let mut num_class = 0;
@@ -117,19 +119,20 @@ impl Booster {
             &mut num_class
         ))?;
 
-        let out_result: Vec<f32> = vec![Default::default(); num_rows * num_class as usize];
+        let mut out_length: c_longlong = 0;
+        let out_result: Vec<f64> = vec![Default::default(); (nrow * num_class) as usize];
 
         lgbm_call!(lightgbm_sys::LGBM_BoosterPredictForMat(
             self.handle,
             data.as_ptr() as *const c_void,
             lightgbm_sys::C_API_DTYPE_FLOAT32 as i32,
-            num_rows as i32,
-            num_features,
-            1_i32,
+            nrow,
+            ncol,
+            is_row_major,
             lightgbm_sys::C_API_PREDICT_NORMAL as i32,
-            0_i32,
-            -1_i32,
-            params.as_ptr() as *const c_char,
+            start_iteration,
+            num_iteration,
+            parameters.as_ptr() as *const c_char,
             &mut out_length,
             out_result.as_ptr() as *mut c_double,
         ))?;
@@ -248,13 +251,14 @@ mod tests {
         };
         let bst = _train_booster(&params);
         let mut features = Vec::new();
-        features.extend(vec![0.5; 28]);
-        features.extend(vec![0.0; 28]);
-        features.extend(vec![0.9; 28]);
 
-        assert_eq!(features.len(), 28 * 3);
+        for _ in 0..2500 {
+            features.extend(vec![0.5; 28]);
+        }
+
+        assert_eq!(features.len(), 28 * 2500);
         let result = bst.predict(&features, 28).unwrap();
-        assert_eq!(result.len(), 3);
+        assert_eq!(result.len(), 2500);
     }
 
     #[test]
