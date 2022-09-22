@@ -140,6 +140,17 @@ impl Booster {
         Ok(out_result)
     }
 
+    /// Get number of classes.
+    pub fn num_class(&self) -> Result<i32> {
+        let mut num_class = 0;
+        lgbm_call!(lightgbm_sys::LGBM_BoosterGetNumClasses(
+            self.handle,
+            &mut num_class
+        ))?;
+
+        Ok(num_class)
+    }
+
     /// Get Feature Num.
     pub fn num_feature(&self) -> Result<i32> {
         let mut out_len = 0;
@@ -267,6 +278,14 @@ mod tests {
         let bst = _train_booster(&params);
         let num_feature = bst.num_feature().unwrap();
         assert_eq!(num_feature, 28);
+    }
+
+    #[test]
+    fn num_class() {
+        let params = _default_params();
+        let bst = _train_booster(&params);
+        let num_class = bst.num_class().unwrap();
+        assert_eq!(num_class, 1);
     }
 
     #[test]
