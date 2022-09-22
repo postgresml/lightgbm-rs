@@ -59,29 +59,30 @@ impl Dataset {
     /// let dataset = Dataset::from_vec(&data, &label, 4).unwrap();
     /// ```
     pub fn from_vec(data: &[f32], labels: &[f32], num_features: i32) -> Result<Self> {
-        let data_length = data.len() as i32;
-        let feature_length = num_features;
-        let params = CString::new("").unwrap();
-        let label_str = CString::new("label").unwrap();
-        let reference = std::ptr::null_mut(); // not use
+        let nrows = data.len() as i32 / num_features as i32;
+        let ncol = num_features;
+        let is_row_major = 1 as i32; // row-major
+        let parameters = CString::new("").unwrap();
+        let label_name = CString::new("label").unwrap();
+
         let mut handle = std::ptr::null_mut();
 
         lgbm_call!(lightgbm_sys::LGBM_DatasetCreateFromMat(
             data.as_ptr() as *const c_void,
             lightgbm_sys::C_API_DTYPE_FLOAT32 as i32,
-            data_length,
-            feature_length,
-            1_i32,
-            params.as_ptr() as *const c_char,
-            reference,
+            nrows,
+            ncol,
+            is_row_major,
+            parameters.as_ptr() as *const c_char,
+            std::ptr::null_mut(),
             &mut handle
         ))?;
 
         lgbm_call!(lightgbm_sys::LGBM_DatasetSetField(
             handle,
-            label_str.as_ptr() as *const c_char,
+            label_name.as_ptr() as *const c_char,
             labels.as_ptr() as *const c_void,
-            data_length as i32,
+            nrows as i32,
             lightgbm_sys::C_API_DTYPE_FLOAT32 as i32
         ))?;
 
