@@ -19,3 +19,4 @@ polars = {version = "0.16.0", optional = true}
 [features]
 default = []
 dataframe = ["polars"]
+cuda = ["lightgbm-sys/cuda"]
