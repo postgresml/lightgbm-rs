@@ -41,6 +41,7 @@ fn main() {
         .profile("Release")
         .uses_cxx11()
         .define("BUILD_STATIC_LIB", "ON")
+        .define("USE_CUDA", "1")
         .define("USE_CUDA_EXP", "1")
         .build();
 
@@ -89,8 +90,6 @@ fn main() {
     #[cfg(feature = "cuda")]
     {
         println!("cargo:rustc-link-search={}", "/usr/local/cuda/lib64");
-        println!("cargo:rustc-link-search={}", "/usr/local/cuda/lib64/stubs");
-        println!("cargo:rustc-link-lib=dylib=cuda");
-        println!("cargo:rustc-link-lib=dylib=cudart");
+        println!("cargo:rustc-link-lib=static=cudart_static");
     }
 }
