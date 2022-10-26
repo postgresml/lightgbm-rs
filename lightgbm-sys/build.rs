@@ -41,6 +41,7 @@ fn main() {
         .profile("Release")
         .uses_cxx11()
         .define("BUILD_STATIC_LIB", "ON")
+        .define("USE_CUDA", "1")
         .define("USE_CUDA_EXP", "1")
         .build();
 
