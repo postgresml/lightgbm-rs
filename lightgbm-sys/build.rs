@@ -35,22 +35,32 @@ fn main() {
         }
     }
 
+    let mut dst = Config::new(&lgbm_root);
+
     // CMake
     #[cfg(feature = "cuda")]
-    let dst = Config::new(&lgbm_root)
+    let dst = dst
         .profile("Release")
         .uses_cxx11()
         .define("BUILD_STATIC_LIB", "ON")
         .define("USE_CUDA", "1")
-        .define("USE_CUDA_EXP", "1")
-        .build();
+        .define("USE_CUDA_EXP", "1");
 
     #[cfg(not(feature = "cuda"))]
-    let dst = Config::new(&lgbm_root)
+    let dst = dst
         .profile("Release")
         .uses_cxx11()
-        .define("BUILD_STATIC_LIB", "ON")
-        .build();
+        .define("BUILD_STATIC_LIB", "ON");
+
+    #[cfg(target_os = "macos")]
+    let dst =
+        dst
+            .define("CMAKE_C_COMPILER", "/opt/homebrew/opt/llvm/bin/clang")
+            .define("CMAKE_CXX_COMPILER", "/opt/homebrew/opt/llvm/bin/clang++")
+            .define("OPENMP_LIBRARIES", "/opt/homebrew/opt/llvm/lib")
+            .define("OPENMP_INCLUDES", "/opt/homebrew/opt/llvm/include");
+
+    let dst = dst.build();
 
     // bindgen build
     let bindings = bindgen::Builder::default()
