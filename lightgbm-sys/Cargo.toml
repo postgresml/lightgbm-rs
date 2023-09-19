@@ -16,5 +16,5 @@ cuda = []
 libc = "0.2.81"
 
 [build-dependencies]
-bindgen = "0.56.0"
+bindgen = "0.68"
 cmake = "0.1"
