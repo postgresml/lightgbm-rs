@@ -13,8 +13,8 @@ exclude = ["README.md", ".gitlab-ci.yml", ".hgeol", ".gitignore", ".appveyor.yml
 cuda = []
 
 [dependencies]
-libc = "0.2.81"
+libc = "0.2"
 
 [build-dependencies]
-bindgen = "0.69"
+bindgen = "0.71"
 cmake = "0.1"
