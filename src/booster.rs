@@ -165,6 +165,35 @@ impl Booster {
         Ok(num_class)
     }
 
+    /// Predict for single row.
+    pub fn predict_row(&self, data: Vec<f64>) -> Result<Vec<f64>> {
+        let feature_length = data.len();
+        let params = CString::new("").unwrap();
+
+        let mut num_class = 0;
+        lgbm_call!(lightgbm_sys::LGBM_BoosterGetNumClasses(
+            self.handle,
+            &mut num_class
+        ))?;
+        let mut out_result = vec![Default::default(); num_class as usize];
+
+        lgbm_call!(lightgbm_sys::LGBM_BoosterPredictForMatSingleRow(
+            self.handle,
+            data.as_ptr().cast(),
+            lightgbm_sys::C_API_DTYPE_FLOAT64 as _,
+            feature_length as _,
+            1,
+            lightgbm_sys::C_API_PREDICT_NORMAL as _,
+            0,
+            -1,
+            params.as_ptr().cast(),
+            &mut 0,
+            out_result.as_mut_ptr(),
+        ))?;
+
+        Ok(out_result)
+    }
+
     /// Get Feature Num.
     pub fn num_feature(&self) -> Result<i32> {
         let mut out_len = 0;
@@ -284,6 +313,26 @@ mod tests {
         assert_eq!(features.len(), 28 * 2500);
         let result = bst.predict(&features, 28).unwrap();
         assert_eq!(result.len(), 2500);
+    }
+
+    #[test]
+    fn predict_single_row() {
+        let params = json! {
+            {
+                "num_iterations": 10,
+                "objective": "binary",
+                "metric": "auc",
+                "data_random_seed": 0
+            }
+        };
+        let bst = _train_booster(&params);
+        let feature = vec![0.9; 28];
+        let result = bst.predict_row(feature).unwrap();
+        let mut normalized_result = Vec::new();
+        for r in &result {
+            normalized_result.push(if r > &0.5 { 1 } else { 0 });
+        }
+        assert_eq!(normalized_result, vec![1]);
     }
 
     #[test]
