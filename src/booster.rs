@@ -121,9 +121,9 @@ impl Booster {
     pub fn predict(&self, data: &[f32], num_features: i32) -> Result<Vec<f64>> {
         let ncol = num_features;
         let nrow = data.len() as i32 / ncol;
-        let is_row_major = 1 as i32;
-        let start_iteration = 0 as i32;
-        let num_iteration = -1 as i32; // no limit
+        let is_row_major = 1_i32;
+        let start_iteration = 0_i32;
+        let num_iteration = -1_i32; // no limit
         let parameters = CString::new("").unwrap();
 
         // get num_class
