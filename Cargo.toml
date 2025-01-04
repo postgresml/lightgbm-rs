@@ -10,10 +10,10 @@ exclude = [".gitignore", ".gitmodules", "examples", "lightgbm-sys"]
 
 [dependencies]
 lightgbm-sys = { path = "lightgbm-sys", version = "0.3.1" }
-libc = "0.2.81"
-derive_builder = "0.12"
+libc = "0.2.169"
+derive_builder = "0.20"
 serde_json = "1"
-polars = {version = "0.33", optional = true}
+polars = {version = "0.45", optional = true}
 
 
 [features]

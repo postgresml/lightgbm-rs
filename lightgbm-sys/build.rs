@@ -15,7 +15,7 @@ fn main() {
     if !lgbm_root.exists() {
         let status = if target.contains("windows") {
             Command::new("cmd")
-                .args(&[
+                .args([
                     "/C",
                     "echo D | xcopy /S /Y lightgbm",
                     lgbm_root.to_str().unwrap(),
@@ -23,7 +23,7 @@ fn main() {
                 .status()
         } else {
             Command::new("cp")
-                .args(&["-r", "lightgbm", lgbm_root.to_str().unwrap()])
+                .args(["-r", "lightgbm", lgbm_root.to_str().unwrap()])
                 .status()
         };
         if let Some(err) = status.err() {
@@ -41,7 +41,6 @@ fn main() {
     #[cfg(feature = "cuda")]
     let dst = dst
         .profile("Release")
-        .uses_cxx11()
         .define("BUILD_STATIC_LIB", "ON")
         .define("USE_CUDA", "1")
         .define("USE_CUDA_EXP", "1");
@@ -49,7 +48,6 @@ fn main() {
     #[cfg(not(feature = "cuda"))]
     let dst = dst
         .profile("Release")
-        .uses_cxx11()
         .define("BUILD_STATIC_LIB", "ON");
 
     #[cfg(target_os = "macos")]
