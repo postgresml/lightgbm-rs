@@ -18,6 +18,20 @@ impl Booster {
         Booster { handle }
     }
 
+    /// Initialize model from bytes.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        let booster_str = CString::new(bytes).unwrap();
+        let mut out_num_iteration = 0;
+        let mut handle = std::ptr::null_mut();
+        lgbm_call!(lightgbm_sys::LGBM_BoosterLoadModelFromString(
+            booster_str.as_ptr().cast(),
+            &mut out_num_iteration,
+            &mut handle
+        ))?;
+
+        Ok(Booster::new(handle))
+    }
+
     /// Init from model file.
     pub fn from_file(filename: &str) -> Result<Self> {
         let filename_str = CString::new(filename).unwrap();
@@ -107,9 +121,9 @@ impl Booster {
     pub fn predict(&self, data: &[f32], num_features: i32) -> Result<Vec<f64>> {
         let ncol = num_features;
         let nrow = data.len() as i32 / ncol;
-        let is_row_major = 1 as i32;
-        let start_iteration = 0 as i32;
-        let num_iteration = -1 as i32; // no limit
+        let is_row_major = 1_i32;
+        let start_iteration = 0_i32;
+        let num_iteration = -1_i32; // no limit
         let parameters = CString::new("").unwrap();
 
         // get num_class
@@ -149,6 +163,35 @@ impl Booster {
         ))?;
 
         Ok(num_class)
+    }
+
+    /// Predict for single row.
+    pub fn predict_row(&self, data: Vec<f64>) -> Result<Vec<f64>> {
+        let feature_length = data.len();
+        let params = CString::new("").unwrap();
+
+        let mut num_class = 0;
+        lgbm_call!(lightgbm_sys::LGBM_BoosterGetNumClasses(
+            self.handle,
+            &mut num_class
+        ))?;
+        let mut out_result = vec![Default::default(); num_class as usize];
+
+        lgbm_call!(lightgbm_sys::LGBM_BoosterPredictForMatSingleRow(
+            self.handle,
+            data.as_ptr().cast(),
+            lightgbm_sys::C_API_DTYPE_FLOAT64 as _,
+            feature_length as _,
+            1,
+            lightgbm_sys::C_API_PREDICT_NORMAL as _,
+            0,
+            -1,
+            params.as_ptr().cast(),
+            &mut 0,
+            out_result.as_mut_ptr(),
+        ))?;
+
+        Ok(out_result)
     }
 
     /// Get Feature Num.
@@ -230,12 +273,12 @@ mod tests {
     use std::path::Path;
 
     fn _read_train_file() -> Result<Dataset> {
-        Dataset::from_file(&"lightgbm-sys/lightgbm/examples/binary_classification/binary.train")
+        Dataset::from_file("lightgbm-sys/lightgbm/examples/binary_classification/binary.train")
     }
 
     fn _train_booster(params: &Value) -> Booster {
         let dataset = _read_train_file().unwrap();
-        Booster::train(dataset, &params).unwrap()
+        Booster::train(dataset, params).unwrap()
     }
 
     fn _default_params() -> Value {
@@ -270,6 +313,26 @@ mod tests {
         assert_eq!(features.len(), 28 * 2500);
         let result = bst.predict(&features, 28).unwrap();
         assert_eq!(result.len(), 2500);
+    }
+
+    #[test]
+    fn predict_single_row() {
+        let params = json! {
+            {
+                "num_iterations": 10,
+                "objective": "binary",
+                "metric": "auc",
+                "data_random_seed": 0
+            }
+        };
+        let bst = _train_booster(&params);
+        let feature = vec![0.9; 28];
+        let result = bst.predict_row(feature).unwrap();
+        let mut normalized_result = Vec::new();
+        for r in &result {
+            normalized_result.push(if r > &0.5 { 1 } else { 0 });
+        }
+        assert_eq!(normalized_result, vec![1]);
     }
 
     #[test]
@@ -309,13 +372,13 @@ mod tests {
     fn save_file() {
         let params = _default_params();
         let bst = _train_booster(&params);
-        assert_eq!(bst.save_file(&"./test/test_save_file.output"), Ok(()));
+        assert_eq!(bst.save_file("./test/test_save_file.output"), Ok(()));
         assert!(Path::new("./test/test_save_file.output").exists());
         let _ = fs::remove_file("./test/test_save_file.output");
     }
 
     #[test]
     fn from_file() {
-        let _ = Booster::from_file(&"./test/test_from_file.input");
+        let _ = Booster::from_file("./test/test_from_file.input");
     }
 }

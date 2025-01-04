@@ -37,7 +37,6 @@ pub struct Dataset {
     pub(crate) handle: lightgbm_sys::DatasetHandle,
 }
 
-#[link(name = "c")]
 impl Dataset {
     fn new(handle: lightgbm_sys::DatasetHandle) -> Self {
         Self { handle }
@@ -59,9 +58,9 @@ impl Dataset {
     /// let dataset = Dataset::from_vec(&data, &label, 4).unwrap();
     /// ```
     pub fn from_vec(data: &[f32], labels: &[f32], num_features: i32) -> Result<Self> {
-        let nrows = data.len() as i32 / num_features as i32;
+        let nrows = data.len() as i32 / num_features;
         let ncol = num_features;
-        let is_row_major = 1 as i32; // row-major
+        let is_row_major = 1_i32; // row-major
         let parameters = CString::new("").unwrap();
         let label_name = CString::new("label").unwrap();
 
@@ -82,7 +81,7 @@ impl Dataset {
             handle,
             label_name.as_ptr() as *const c_char,
             labels.as_ptr() as *const c_void,
-            nrows as i32,
+            nrows,
             lightgbm_sys::C_API_DTYPE_FLOAT32 as i32
         ))?;
 
@@ -199,13 +198,14 @@ impl Dataset {
 
         let (m, n) = dataframe.shape();
 
-        let label_series = &dataframe.select_series(label_col_name)?[0].cast::<Float32Type>()?;
+        let label_series =
+            &dataframe.select_series([label_col_name])?[0].cast(&DataType::Float32)?;
 
         if label_series.null_count() != 0 {
             panic!("Cannot create a dataset with null values, encountered nulls when creating the label array")
         }
 
-        dataframe.drop_in_place(label_col_name)?;
+        let _ = dataframe.drop_in_place(label_col_name)?;
 
         let mut label_values = Vec::with_capacity(m);
 
@@ -228,7 +228,7 @@ impl Dataset {
                 panic!("Cannot create a dataset with null values, encountered nulls when creating the features array")
             }
 
-            let series = series.cast::<Float64Type>()?;
+            let series = series.cast(&DataType::Float64)?;
             let ca = series.unpack::<Float64Type>()?;
 
             ca.into_no_null_iter()
@@ -249,7 +249,7 @@ impl Drop for Dataset {
 mod tests {
     use super::*;
     fn read_train_file() -> Result<Dataset> {
-        Dataset::from_file(&"lightgbm-sys/lightgbm/examples/binary_classification/binary.train")
+        Dataset::from_file("lightgbm-sys/lightgbm/examples/binary_classification/binary.train")
     }
 
     #[test]
