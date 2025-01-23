@@ -50,7 +50,8 @@ fn main() {
         .define("CMAKE_C_COMPILER", "/opt/homebrew/opt/llvm/bin/clang")
         .define("CMAKE_CXX_COMPILER", "/opt/homebrew/opt/llvm/bin/clang++")
         .define("OPENMP_LIBRARIES", "/opt/homebrew/opt/llvm/lib")
-        .define("OPENMP_INCLUDES", "/opt/homebrew/opt/llvm/include");
+        .define("OPENMP_INCLUDES", "/opt/homebrew/opt/llvm/include")
+        .define("CMAKE_OSX_DEPLOYMENT_TARGET", "11.0");
 
     let dst = dst.build();
 
